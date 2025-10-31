@@ -17,7 +17,7 @@
       --accent-2:#00c48c;
       --purple:#7b61ff;
       --danger:#ff7a45;
-      --glass: rgba(255,255,255,0.7);
+      --glass: rgba(255,255,255,0.92);
       --shadow: 0 8px 28px rgba(16,32,58,0.06);
       --radius:12px;
       --page-pad:28px;
@@ -27,12 +27,32 @@
     body{
       margin:0;
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background: linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+      /* Layered, soft background to keep texture but improve contrast against cards */
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(1200px 600px at 10% 10%, rgba(43,140,255,0.04), transparent 12%),
+        radial-gradient(1000px 500px at 90% 85%, rgba(123,97,255,0.03), transparent 14%),
+        linear-gradient(180deg, rgba(247,251,255,1) 0%, rgba(245,248,251,1) 100%);
+      background-repeat:no-repeat;
+      background-size:cover;
       color: #10203a;
       -webkit-font-smoothing:antialiased;
       -moz-osx-font-smoothing:grayscale;
       line-height:1.35;
       padding: var(--page-pad);
+      position:relative;
+      overflow-x:hidden;
+    }
+
+    /* subtle vignette/soft overlay to make foreground pop */
+    body::before{
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(60% 60% at 50% 45%, rgba(255,255,255,0) 0%, rgba(12,30,45,0.03) 100%);
+      mix-blend-mode: multiply;
+      z-index: 0;
     }
 
     /* Header / Topbar */
@@ -148,10 +168,12 @@
 
     /* Modules card */
     .card{
-      background:var(--card);
+      background: rgba(255,255,255,0.92); /* more opaque for readability */
+      backdrop-filter: blur(6px) saturate(1.05);
       border-radius:var(--radius);
       padding:18px;
       box-shadow:var(--shadow);
+      position:relative; z-index:1;
     }
     .modules-grid{
       display:grid;
