@@ -513,58 +513,26 @@
   </main>
 
   <script>
-    // Generic handler to make UI elements interactive and show press/active states.
-    function handleAction(action) {
-      const map = {
-        '#new-patient': 'Opening New Patient form…',
-        '#schedule': 'Opening Schedule Appointment…',
-        '#invoice': 'Generating invoice…',
-        '#reports': 'Opening reports…',
-        'logout': 'Logging out…',
-        'appointments': 'Opening Appointments view…',
-        'patients-list': 'Opening Patient management…',
-        'staff': 'Opening Medical staff…',
-        'billing': 'Opening Billing & Insurance…',
-        '#home': 'Back to dashboard',
-        '#patients': 'Opening Patients',
-        '#doctors': 'Opening Doctors'
-      };
-      const msg = map[action] || `Action: ${action}`;
-      showToast(msg);
+    // --- Lightweight SPA + localStorage-backed mock data ---
+    // This script enables in-page navigation and simple CRUD for patients,
+    // appointments and invoices so the single-file UI behaves like the original app.
 
-      if (typeof action === 'string' && action.startsWith('#')) {
-        const el = document.querySelector(action);
-        if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
-      }
-    }
-
-    // lightweight toast
-    function showToast(text) {
+    // Utility: toast
+    function showToast(text, time = 1600) {
       const t = document.createElement('div');
       t.textContent = text;
       Object.assign(t.style, {
-        position: 'fixed',
-        right: '20px',
-        bottom: '20px',
-        background: 'rgba(20,40,60,0.95)',
-        color: 'white',
-        padding: '10px 14px',
-        borderRadius: '8px',
-        boxShadow: '0 8px 24px rgba(16,32,58,0.25)',
-        zIndex: 9999,
-        fontWeight: 700,
-        fontSize: '13px',
-        opacity: '0',
-        transition: 'opacity .18s ease, transform .18s ease',
-        transform: 'translateY(6px)'
+        position: 'fixed', right: '20px', bottom: '20px', background: 'rgba(20,40,60,0.95)',
+        color: 'white', padding: '10px 14px', borderRadius: '8px', boxShadow: '0 8px 24px rgba(16,32,58,0.25)',
+        zIndex: 9999, fontWeight: 700, fontSize: '13px', opacity: '0', transition: 'opacity .18s ease, transform .18s ease', transform: 'translateY(6px)'
       });
       document.body.appendChild(t);
       requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
-      setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(6px)'; }, 1600);
-      setTimeout(() => t.remove(), 1800);
+      setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(6px)'; }, time);
+      setTimeout(() => t.remove(), time + 200);
     }
 
-    // Visual feedback: transient press + optional persistent active
+    // Visual press state helper
     function flashPress(el, {duration = 260, persist = false} = {}) {
       if (!el) return;
       el.classList.remove('is-pressed');
@@ -573,7 +541,6 @@
           el.closest('nav.topnav').querySelectorAll('a').forEach(a => a.classList.remove('active'));
           el.classList.add('active');
         } else if (el.matches('.stat')) {
-          // exclusive for stats: toggle active single
           el.closest('.stats-row')?.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
           el.classList.add('active');
         } else {
@@ -582,60 +549,319 @@
       }
       requestAnimationFrame(() => el.classList.add('is-pressed'));
       clearTimeout(el._pressTimeout);
-      el._pressTimeout = setTimeout(() => {
-        el.classList.remove('is-pressed');
-      }, duration);
-      // update aria-pressed for toggleable elements
+      el._pressTimeout = setTimeout(() => el.classList.remove('is-pressed'), duration);
       if (el.hasAttribute('aria-pressed')) {
         const pressed = el.getAttribute('aria-pressed') === 'true';
         el.setAttribute('aria-pressed', String(!pressed));
       }
     }
 
-    document.addEventListener('click', function(e) {
-      const el = e.target.closest('[data-action], .cta, .btn-outline, nav.topnav a, .module, .action-btn, .stat');
-      if (!el) return;
-      e.preventDefault();
+    // --- Simple data layer using localStorage ---
+    const STORAGE_KEYS = { PATIENTS: 'ml_patients_v1', APPTS: 'ml_appointments_v1', INVOICES: 'ml_invoices_v1' };
 
-      const persistFor = el.matches('nav.topnav a') || el.matches('.stat');
-      flashPress(el, {duration: 260, persist: persistFor});
+    function read(key) {
+      try { return JSON.parse(localStorage.getItem(key) || 'null') || []; } catch(e) { return []; }
+    }
+    function write(key, val) { localStorage.setItem(key, JSON.stringify(val || [])); }
 
-      const action = el.dataset.action || el.getAttribute('href') || el.textContent.trim();
-      handleAction(action);
-    });
+    function getPatients(){ return read(STORAGE_KEYS.PATIENTS); }
+    function savePatients(list){ write(STORAGE_KEYS.PATIENTS, list); }
+    function getAppointments(){ return read(STORAGE_KEYS.APPTS); }
+    function saveAppointments(list){ write(STORAGE_KEYS.APPTS, list); }
+    function getInvoices(){ return read(STORAGE_KEYS.INVOICES); }
+    function saveInvoices(list){ write(STORAGE_KEYS.INVOICES, list); }
 
-    // keyboard accessible activation with visual feedback
-    document.addEventListener('keydown', function(e) {
-      const active = document.activeElement;
-      if (!active) return;
-      const clickable = active.matches('[data-action], .module, .action-btn, .btn-outline, .cta, nav.topnav a, .stat');
-      if ((e.key === 'Enter' || e.key === ' ') && clickable) {
+    function genId(prefix='id') { return prefix + '_' + Math.random().toString(36).slice(2,9); }
+
+    // Seed sample data if empty
+    if (!getPatients().length) {
+      const sample = [
+        { id: genId('p'), name: 'John Doe', age: 42, phone: '077-123-4567', gender: 'Male', notes: 'Diabetic' },
+        { id: genId('p'), name: 'Jane Roe', age: 33, phone: '077-333-9988', gender: 'Female', notes: 'Pregnancy follow-up' }
+      ];
+      savePatients(sample);
+    }
+
+    // Keep original main content to restore for dashboard
+    const mainEl = document.querySelector('main');
+    const originalMain = mainEl.innerHTML;
+
+    // Router
+    const router = {
+      navigate(hash) {
+        if (!hash) hash = '#home';
+        location.hash = hash;
+      },
+      start() {
+        window.addEventListener('hashchange', () => this.render(location.hash || '#home'));
+        this.render(location.hash || '#home');
+      },
+      render(hash) {
+        // keep navigation active state
+        document.querySelectorAll('nav.topnav a').forEach(a => a.classList.toggle('active', a.getAttribute('href') === hash));
+        switch(hash) {
+          case '#patients': renderPatients(); break;
+          case '#new-patient': renderNewPatient(); break;
+          case '#patient-view': {
+            const id = this._lastParam; this._lastParam = null; renderPatientView(id); break;
+          }
+          case '#appointments': renderAppointments(); break;
+          case '#billing': renderBilling(); break;
+          case '#home': default: restoreDashboard(); break;
+        }
+      }
+    };
+
+    // Rendering helpers
+    function restoreDashboard(){ mainEl.innerHTML = originalMain; attachDelegates(); }
+
+    function renderPatients(){
+      const patients = getPatients();
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:1100px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">Patients</h2>
+              <div class="muted">Manage patient records</div>
+            </div>
+            <div style="display:flex;gap:10px">
+              <button class="action-btn" id="back-home">Back</button>
+              <button class="action-btn green" id="add-patient">+ New Patient</button>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            ${patients.length ? `<table style="width:100%;border-collapse:collapse;margin-top:10px"><thead><tr style="text-align:left;color:var(--muted)"><th>Name</th><th>Age</th><th>Phone</th><th>Gender</th><th></th></tr></thead><tbody>${patients.map(p=>`<tr data-id="${p.id}" class="patient-row" style="border-top:1px solid rgba(16,32,58,0.04);cursor:pointer"><td style="padding:12px 6px">${p.name}</td><td>${p.age}</td><td>${p.phone}</td><td>${p.gender || ''}</td><td style="text-align:right"><button class="action-btn" data-action="view-${p.id}">View</button></td></tr>`).join('')}</tbody></table>` : '<div class="muted" style="padding:18px">No patients yet — click New Patient to add one.</div>'}
+          </div>
+        </section>
+      `;
+
+      // attach handlers
+      document.getElementById('add-patient').addEventListener('click', ()=> router.navigate('#new-patient'));
+      document.getElementById('back-home').addEventListener('click', ()=> router.navigate('#home'));
+      document.querySelectorAll('.patient-row').forEach(tr => {
+        tr.addEventListener('click', (e)=>{
+          const id = tr.dataset.id; router._lastParam = id; router.navigate('#patient-view');
+        });
+      });
+      // any internal action buttons for view
+      document.querySelectorAll('button[data-action^="view-"]').forEach(b=>{
+        b.addEventListener('click', (ev)=>{ ev.stopPropagation(); const id = b.dataset.action.replace('view-',''); router._lastParam = id; router.navigate('#patient-view'); });
+      });
+    }
+
+    function renderNewPatient(){
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:720px;margin:0 auto">
+          <h2>New Patient</h2>
+          <div class="muted">Add a patient to local storage (demo)</div>
+          <form id="form-new" style="margin-top:12px;display:grid;gap:8px">
+            <input name="name" placeholder="Full name" required style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <div style="display:flex;gap:8px"><input name="age" type="number" placeholder="Age" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06);flex:1" /><input name="phone" placeholder="Phone" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06);flex:1" /></div>
+            <input name="gender" placeholder="Gender" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <textarea name="notes" placeholder="Notes" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)"></textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+              <button type="button" class="action-btn" id="cancel-new">Cancel</button>
+              <button type="submit" class="action-btn green">Create</button>
+            </div>
+          </form>
+        </section>
+      `;
+      document.getElementById('cancel-new').addEventListener('click', ()=> router.navigate('#patients'));
+      document.getElementById('form-new').addEventListener('submit', function(e){
         e.preventDefault();
-        const persistFor = active.matches('nav.topnav a') || active.matches('.stat');
-        flashPress(active, {duration: 260, persist: persistFor});
-        active.click();
+        const fd = new FormData(e.target);
+        const p = { id: genId('p'), name: fd.get('name').trim(), age: Number(fd.get('age')||0), phone: fd.get('phone')||'', gender: fd.get('gender')||'', notes: fd.get('notes')||'' };
+        const list = getPatients(); list.unshift(p); savePatients(list);
+        showToast('Patient created');
+        router._lastParam = p.id; router.navigate('#patient-view');
+      });
+    }
+
+    function renderPatientView(id){
+      const p = getPatients().find(x=>x.id===id);
+      if (!p) { showToast('Patient not found'); return router.navigate('#patients'); }
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:720px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">${p.name}</h2>
+              <div class="muted">Patient ID: ${p.id}</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="action-btn" id="back-to-patients">Back</button>
+              <button class="action-btn" id="edit-patient">Edit</button>
+              <button class="action-btn" id="delete-patient" style="border-color:rgba(255,122,69,0.08);color:#a64c28">Delete</button>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:grid;gap:8px">
+            <div><strong>Age:</strong> ${p.age}</div>
+            <div><strong>Phone:</strong> ${p.phone}</div>
+            <div><strong>Gender:</strong> ${p.gender || '-'}</div>
+            <div><strong>Notes:</strong> ${p.notes || '-'}</div>
+          </div>
+        </section>
+      `;
+      document.getElementById('back-to-patients').addEventListener('click', ()=> router.navigate('#patients'));
+      document.getElementById('edit-patient').addEventListener('click', ()=> renderEditPatient(id));
+      document.getElementById('delete-patient').addEventListener('click', ()=>{
+        if (!confirm('Delete this patient?')) return;
+        const list = getPatients().filter(x=>x.id!==id); savePatients(list);
+        showToast('Patient deleted');
+        router.navigate('#patients');
+      });
+    }
+
+    function renderEditPatient(id){
+      const p = getPatients().find(x=>x.id===id);
+      if (!p) return router.navigate('#patients');
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:720px;margin:0 auto">
+          <h2>Edit Patient</h2>
+          <form id="form-edit" style="display:grid;gap:8px;margin-top:8px">
+            <input name="name" value="${escapeHtml(p.name)}" required style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <div style="display:flex;gap:8px"><input name="age" type="number" value="${p.age}" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06);flex:1" /><input name="phone" value="${escapeHtml(p.phone)}" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06);flex:1" /></div>
+            <input name="gender" value="${escapeHtml(p.gender||'')}" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <textarea name="notes" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)">${escapeHtml(p.notes||'')}</textarea>
+            <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:8px">
+              <button type="button" class="action-btn" id="cancel-edit">Cancel</button>
+              <button type="submit" class="action-btn green">Save</button>
+            </div>
+          </form>
+        </section>
+      `;
+      document.getElementById('cancel-edit').addEventListener('click', ()=> router._lastParam = id || null, router.navigate('#patient-view'));
+      document.getElementById('form-edit').addEventListener('submit', function(e){
+        e.preventDefault(); const fd = new FormData(e.target);
+        const list = getPatients(); const idx = list.findIndex(x=>x.id===id);
+        if (idx === -1) return showToast('Patient missing');
+        list[idx] = { ...list[idx], name: fd.get('name').trim(), age: Number(fd.get('age')||0), phone: fd.get('phone')||'', gender: fd.get('gender')||'', notes: fd.get('notes')||'' };
+        savePatients(list); showToast('Saved'); router._lastParam = id; router.navigate('#patient-view');
+      });
+    }
+
+    // Appointments (simple)
+    function renderAppointments(){
+      const appts = getAppointments();
+      const patients = getPatients();
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:880px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">Appointments</h2>
+              <div class="muted">Schedule and view appointments</div>
+            </div>
+            <div style="display:flex;gap:8px">
+              <button class="action-btn" id="back-home-2">Back</button>
+              <button class="action-btn green" id="new-appt">+ Schedule</button>
+            </div>
+          </div>
+          <div style="margin-top:12px">
+            ${appts.length ? `<div style="display:grid;gap:8px">${appts.map(a=>`<div class="activity"><div class="left"><div class="avatar-sm">${(patients.find(p=>p.id===a.patientId)||{name:'?'}).name.split(' ').map(n=>n[0]).slice(0,2).join('')}</div><div class="meta"><strong>${(patients.find(p=>p.id===a.patientId)||{name:'Unknown'}).name}</strong><div class="muted">${a.date} · ${a.time}</div></div></div><div class="muted">${a.type||'Checkup'}</div></div>`).join('')}</div>` : '<div class="muted">No appointments yet.</div>'}
+          </div>
+        </section>
+      `;
+      document.getElementById('back-home-2').addEventListener('click', ()=> router.navigate('#home'));
+      document.getElementById('new-appt').addEventListener('click', ()=> renderNewAppointment());
+    }
+
+    function renderNewAppointment(){
+      const patients = getPatients();
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:720px;margin:0 auto">
+          <h2>Schedule Appointment</h2>
+          <form id="form-appt" style="display:grid;gap:8px;margin-top:8px">
+            <select name="patientId" required style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)">${patients.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('')}</select>
+            <input name="date" type="date" required style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <input name="time" type="time" required style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <input name="type" placeholder="Type (e.g., Checkup)" style="padding:10px;border-radius:8px;border:1px solid rgba(16,32,58,0.06)" />
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="action-btn" id="cancel-appt">Cancel</button><button type="submit" class="action-btn green">Schedule</button></div>
+          </form>
+        </section>
+      `;
+      document.getElementById('cancel-appt').addEventListener('click', ()=> router.navigate('#appointments'));
+      document.getElementById('form-appt').addEventListener('submit', function(e){
+        e.preventDefault(); const fd = new FormData(e.target);
+        const a = { id: genId('a'), patientId: fd.get('patientId'), date: fd.get('date'), time: fd.get('time'), type: fd.get('type') };
+        const list = getAppointments(); list.unshift(a); saveAppointments(list); showToast('Scheduled'); router.navigate('#appointments');
+      });
+    }
+
+    // Billing (very simple)
+    function renderBilling(){
+      const invoices = getInvoices();
+      mainEl.innerHTML = `
+        <section class="card" style="max-width:880px;margin:0 auto">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <h2 style="margin:0">Billing</h2>
+              <div class="muted">Invoices & payments</div>
+            </div>
+            <div style="display:flex;gap:8px"><button class="action-btn" id="back-home-3">Back</button></div>
+          </div>
+          <div style="margin-top:12px">
+            ${invoices.length ? `<div style="display:grid;gap:10px">${invoices.map(inv=>`<div class="activity"><div class="left"><div class="avatar-sm">$</div><div class="meta"><strong>${escapeHtml(inv.title||'Invoice')}</strong><div class="muted">${inv.amount}</div></div></div><div class="muted">${inv.date}</div></div>`).join('')}</div>` : '<div class="muted">No invoices yet.</div>'}
+          </div>
+        </section>
+      `;
+      document.getElementById('back-home-3').addEventListener('click', ()=> router.navigate('#home'));
+    }
+
+    // Attach delegates for the original dashboard when restored
+    function attachDelegates(){
+      document.querySelectorAll('[data-action]').forEach(el=>{
+        el.removeEventListener('_spa_click', _spa_click);
+        el.addEventListener('click', _spa_click);
+      });
+      // Logout
+      document.querySelectorAll('[data-action="logout"]').forEach(b=> b.addEventListener('click', ()=>{ showToast('Logged out'); }));
+      // Quick actions
+      document.querySelectorAll('.action-btn').forEach(btn=>{
+        // keep default behaviour for buttons already wired by data-action
+      });
+    }
+
+    function _spa_click(e){
+      e.preventDefault();
+      const el = e.currentTarget;
+      const action = el.dataset.action || el.getAttribute('href') || el.textContent.trim();
+      flashPress(el, {duration:260, persist: el.matches('nav.topnav a')});
+      if (!action) return;
+      // route to SPA pages
+      if (action === '#home' || action === 'Home' || action === '#') return router.navigate('#home');
+      if (action === '#patients' || action === 'patients-list' || action === 'Patients' || action === 'patients-list') return router.navigate('#patients');
+      if (action === '#new-patient' || action === 'new-patient') return router.navigate('#new-patient');
+      if (action === 'appointments' || action === '#appointments') return router.navigate('#appointments');
+      if (action === 'billing' || action === '#billing') return router.navigate('#billing');
+      if (action === 'staff') { showToast('Staff area (demo)'); return; }
+      if (action === 'logout') { showToast('Logging out…'); return; }
+      // default: show toast
+      showToast(typeof action === 'string' ? action : 'Action');
+    }
+
+    // small helper to escape HTML in values
+    function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"})[c]); }
+
+    // global click delegator for elements we didn't explicitly attach
+    document.addEventListener('click', function(e){
+      const el = e.target.closest('[data-action], nav.topnav a, .module, .action-btn, .stat');
+      if (!el) return;
+      // prefer our SPA handler if data-action exists
+      if (el.hasAttribute('data-action') || el.matches('nav.topnav a')) {
+        // Let specific elements keep their native clicks if they are links to anchors we want to scroll
+        e.preventDefault();
+        _spa_click.call(el, e);
       }
     });
 
-    // ensure anchors with href fragment scroll properly
-    document.querySelectorAll('a[href^="#"]').forEach(a=>{
-      a.addEventListener('click', (ev)=>{
-        const href = a.getAttribute('href');
-        if (href && href.startsWith('#')) {
-          const target = document.querySelector(href);
-          if (target) setTimeout(()=> target.scrollIntoView({behavior:'smooth', block:'start'}), 220);
-        }
-      });
+    // keyboard enter/space
+    document.addEventListener('keydown', function(e){
+      if ((e.key === 'Enter' || e.key === ' ') && document.activeElement) {
+        const el = document.activeElement; if (el.matches('[data-action], .module, .action-btn, nav.topnav a')) { e.preventDefault(); el.click(); }
+      }
     });
 
-    // attach CTA handlers if present
-    document.querySelectorAll('.cta').forEach(node=>{
-      node.addEventListener('click', function(e){
-        e.preventDefault();
-        flashPress(node, {duration:260, persist:false});
-        handleAction(node.dataset.action || '#appointments');
-      });
-    });
+    // start router
+    router.start();
   </script>
 </body>
 </html>
