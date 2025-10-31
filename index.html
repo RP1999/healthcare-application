@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>MediLink Dashboard — Healthcare Application</title>
+
+  <!-- Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f5f8fb;
+      --card:#ffffff;
+      --muted:#98a8bf;
+      --accent:#2b8cff;
+      --accent-2:#00c48c;
+      --purple:#7b61ff;
+      --danger:#ff7a45;
+      --glass: rgba(255,255,255,0.7);
+      --shadow: 0 8px 28px rgba(16,32,58,0.06);
+      --radius:12px;
+      --page-pad:28px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, #f7fbff 0%, var(--bg) 100%);
+      color: #10203a;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      line-height:1.35;
+      padding: var(--page-pad);
+    }
+
+    /* Header / Topbar */
+    .topbar{
+      display:flex;
+      align-items:center;
+      gap:20px;
+      margin-bottom:18px;
+    }
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      text-decoration:none;
+      color:var(--accent);
+    }
+    .logo {
+      width:44px;height:44px;border-radius:10px;
+      display:inline-grid;place-items:center;
+      background:linear-gradient(135deg,var(--accent),var(--purple));
+      color:white;font-weight:700;
+      box-shadow: 0 6px 18px rgba(43,140,255,0.18);
+    }
+    nav.topnav{
+      display:flex;
+      gap:18px;
+      margin-left:28px;
+      align-items:center;
+      flex:1;
+    }
+    nav.topnav a{
+      color:#3b536b;
+      text-decoration:none;
+      font-weight:600;
+      padding:10px 14px;
+      border-radius:8px;
+      cursor: pointer;
+    }
+    nav.topnav a.active{
+      color:var(--accent);
+      background:rgba(43,140,255,0.06);
+      box-shadow: 0 8px 20px rgba(43,140,255,0.04);
+    }
+    .user-area{
+      display:flex;
+      align-items:center;
+      gap:12px;
+    }
+    .user-area .avatar{
+      width:36px;height:36px;border-radius:8px;background:#e6f2ff;color:var(--accent);
+      display:inline-grid;place-items:center;font-weight:700;
+    }
+    .btn-outline{
+      padding:8px 12px;border-radius:8px;border:1px solid rgba(16,32,58,0.06);
+      background:transparent;color:#2b6ea6;font-weight:600;cursor:pointer;
+    }
+
+    /* Main layout */
+    .container{
+      max-width:1200px;
+      margin: 16px auto 60px;
+    }
+    .dashboard-header{
+      display:flex;
+      align-items:flex-start;
+      gap:20px;
+      justify-content:space-between;
+    }
+    .title-block h1{
+      margin:0;font-size:22px;color:#1c3a57;
+    }
+    .title-block p{margin:8px 0 0;color:var(--muted);font-size:13px}
+
+    /* Stats row */
+    .stats-row{
+      display:grid;
+      grid-template-columns:repeat(4,1fr);
+      gap:18px;
+      margin-top:18px;
+    }
+    .stat{
+      background:var(--card);
+      border-radius:12px;
+      padding:18px;
+      box-shadow:var(--shadow);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .12s ease;
+    }
+    .stat:hover{ transform: translateY(-4px); box-shadow: 0 14px 30px rgba(16,32,58,0.06); }
+    .stat .meta{display:flex;gap:12px;align-items:center}
+    .stat .meta .icon{
+      width:44px;height:44px;border-radius:10px;display:grid;place-items:center;color:white;
+      background:linear-gradient(135deg,var(--accent),#4ab3ff);
+      flex:0 0 44px;
+      box-shadow:0 6px 18px rgba(43,140,255,0.12);
+    }
+    .stat .value{font-size:20px;font-weight:800;color:#153150}
+    .stat .label{color:var(--muted);font-size:13px}
+    .stat .delta{font-size:12px;color:var(--accent-2);font-weight:700}
+
+    /* Grid: main + sidebar */
+    .layout{
+      display:grid;
+      grid-template-columns: 1fr 320px;
+      gap:22px;
+      margin-top:22px;
+      align-items:start;
+    }
+
+    /* Modules card */
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+    .modules-grid{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:14px;
+    }
+    .module{
+      border-radius:10px;
+      padding:14px;
+      display:flex;
+      gap:14px;
+      align-items:flex-start;
+      background:linear-gradient(180deg, rgba(250,250,252,0.8), var(--card));
+      border:1px solid rgba(16,32,58,0.04);
+      cursor:pointer;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .module:hover{ transform: translateY(-4px); box-shadow: 0 14px 30px rgba(16,32,58,0.06); }
+    .module .m-icon{
+      width:48px;height:48px;border-radius:10px;display:grid;place-items:center;color:white;font-weight:700;
+      background:linear-gradient(135deg,#4ab3ff,#2b8cff);
+      flex:0 0 48px;
+      box-shadow: 0 8px 22px rgba(75,162,255,0.08);
+      font-size:20px;
+    }
+    .module h4{margin:0;font-size:15px}
+    .module p{margin:6px 0 0;color:var(--muted);font-size:13px}
+    .module .badge{
+      margin-top:10px;display:inline-block;padding:6px 8px;border-radius:8px;background:#f1f7ff;color:var(--accent);font-weight:700;font-size:12px;
+    }
+
+    /* Sidebar quick actions / status */
+    .quick-actions{display:flex;flex-direction:column;gap:12px}
+    .action-btn{
+      display:flex;align-items:center;gap:10px;padding:12px;border-radius:10px;border:1px solid rgba(16,32,58,0.06);
+      text-decoration:none;background:linear-gradient(180deg, #fff, #fbfdff);font-weight:700;color:#214b6b;cursor:pointer;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    .action-btn:hover{ transform: translateY(-3px); box-shadow: 0 12px 26px rgba(16,32,58,0.06); }
+    .action-btn svg{width:18px;height:18px;flex:0 0 18px}
+    .action-btn.green{border-color:rgba(0,196,140,0.12);color:#066a49;background:linear-gradient(180deg,#f7fffb,#f2fff7)}
+    .action-btn.purple{border-color:rgba(123,97,255,0.12);color:#5a3fe6;background:linear-gradient(180deg,#fbf8ff,#f8f6ff)}
+    .status-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+    .status-item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbfdff);border:1px solid rgba(16,32,58,0.04)}
+    .pill{padding:6px 10px;border-radius:999px;font-weight:700;font-size:12px}
+
+    .pill.green{background:#e6fff4;color:#067a4a}
+    .pill.yellow{background:#fff9e6;color:#b07800}
+    .pill.purple{background:#f5f0ff;color:#6a46ff}
+
+    /* Recent Activity */
+    .recent-list{display:flex;flex-direction:column;gap:12px}
+    .activity{
+      display:flex;justify-content:space-between;gap:12px;padding:12px;border-radius:10px;border:1px solid rgba(16,32,58,0.04);
+      background:linear-gradient(180deg,#fff,#fcfdff);cursor:default;
+    }
+    .activity .left{display:flex;gap:12px;align-items:center}
+    .activity .avatar-sm{width:44px;height:44px;border-radius:8px;background:#eef6ff;display:grid;place-items:center;color:var(--accent);font-weight:800}
+    .activity .meta strong{display:block}
+    .muted{color:var(--muted);font-size:13px}
+
+    /* footer */
+    footer.small{margin-top:28px;text-align:center;color:var(--muted);font-size:13px}
+
+    /* Responsive */
+    @media (max-width: 1000px){
+      .stats-row{grid-template-columns:repeat(2,1fr)}
+      .layout{grid-template-columns:1fr}
+    }
+    @media (max-width:600px){
+      body{padding:14px}
+      nav.topnav{display:none}
+      .brand{gap:8px}
+      .stat .value{font-size:18px}
+      .modules-grid{grid-template-columns:1fr}
+      .stats-row{grid-template-columns:1fr}
+    }
+
+    /* little utility */
+    .muted-2{color:#6c8799;font-size:13px}
+
+    /* focus styles for keyboard users */
+    .action-btn:focus, .cta:focus, .btn-outline:focus, nav.topnav a:focus, .module:focus, .stat:focus {
+      outline: 3px solid rgba(43,140,255,0.18);
+      outline-offset: 3px;
+      border-radius:8px;
+    }
+
+    /* clicked / active visual feedback */
+    .is-pressed,
+    .action-btn.is-pressed,
+    .module.is-pressed,
+    .btn-outline.is-pressed,
+    .cta.is-pressed,
+    nav.topnav a.is-pressed,
+    .stat.is-pressed {
+      transform: translateY(1px) scale(0.998);
+      box-shadow: 0 4px 12px rgba(16,32,58,0.08) inset;
+      filter: brightness(0.98);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+
+    /* persistent active state for nav and action buttons */
+    nav.topnav a.active,
+    .action-btn.active,
+    .module.active,
+    .cta.active,
+    .btn-outline.active,
+    .stat.active {
+      background: linear-gradient(90deg, rgba(43,140,255,0.10), rgba(43,140,255,0.02));
+      color: var(--accent);
+      box-shadow: 0 8px 24px rgba(43,140,255,0.06);
+      border-color: rgba(43,140,255,0.10);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="topbar" role="banner">
+    <a class="brand" href="#" data-action="#home">
+      <div class="logo">ML</div>
+      <div>
+        <div style="font-weight:800;color:#153150">MediLink</div>
+        <div style="font-size:12px;color:var(--muted)">Health Diagnostics</div>
+      </div>
+    </a>
+
+    <nav class="topnav" role="navigation" aria-label="main">
+      <a class="active" href="#home" data-action="#home">Home</a>
+      <a href="#patients" data-action="#patients">Patients</a>
+      <a href="#doctors" data-action="#doctors">Doctors</a>
+      <a href="#appointments" data-action="#appointments">Appointments</a>
+      <a href="#billing" data-action="#billing">Billing</a>
+    </nav>
+
+    <div class="user-area" aria-hidden="false">
+      <div class="muted-2" style="font-size:13px">Hi, <strong style="color:#214b6b">Dr. Smith</strong></div>
+      <div class="avatar">DS</div>
+      <button class="btn-outline" data-action="logout" title="Logout">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="dashboard-header" id="home">
+      <div class="title-block">
+        <h1>MediLink Dashboard</h1>
+        <p>Welcome back, Dr. Smith. Here's your overview for today.</p>
+      </div>
+
+      <div style="display:flex;gap:12px;align-items:center">
+        <div style="background:#e6ffef;padding:8px 12px;border-radius:999px;color:#067a4a;font-weight:800;font-size:12px">LIVE · ALL SYSTEMS OPERATIONAL</div>
+      </div>
+    </section>
+
+    <section class="stats-row" aria-label="Key metrics">
+      <div class="stat" role="button" tabindex="0" data-action="patients-list">
+        <div class="meta">
+          <div class="icon" aria-hidden="true">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM6 11c1.657 0 3-1.343 3-3S7.657 5 6 5 3 6.343 3 8s1.343 3 3 3zM6 13c-2.673 0-8 1.343-8 4v2h18v-2c0-2.657-5.327-4-8-4zm10 0c-.29 0-.571.013-.852.036C15.894 13.25 17 14.02 17 15v2h5v-2c0-2.657-5.327-4-8-4z" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <div class="label">Active Patients</div>
+            <div class="value">2,847</div>
+          </div>
+        </div>
+        <div class="delta">+12% <span class="muted" style="font-size:12px">since last month</span></div>
+      </div>
+
+      <div class="stat" role="button" tabindex="0" data-action="appointments">
+        <div class="meta">
+          <div class="icon" style="background:linear-gradient(135deg,#60d394,#00c48c)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M7 10h5v5H7z" fill="currentColor"/><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM5 20V9h14v11H5z" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <div class="label">Today's Appointments</div>
+            <div class="value">156</div>
+          </div>
+        </div>
+        <div class="delta" style="color:#2b8cff">+8%</div>
+      </div>
+
+      <div class="stat" role="button" tabindex="0" data-action="staff">
+        <div class="meta">
+          <div class="icon" style="background:linear-gradient(135deg,#9d8bff,#7b61ff)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.206 0 4-1.794 4-4s-1.794-4-4-4-4 1.794-4 4 1.794 4 4 4zM6 18c0-2.21 3.582-4 6-4s6 1.79 6 4v1H6v-1z" fill="currentColor"/></svg>
+          </div>
+          <div>
+            <div class="label">Medical Staff</div>
+            <div class="value">89</div>
+          </div>
+        </div>
+        <div class="delta" style="color:#7b61ff">+5%</div>
+      </div>
+
+      <div class="stat" role="button" tabindex="0" data-action="billing">
+        <div class="meta">
+          <div class="icon" style="background:linear-gradient(135deg,#ffb36b,#ff7a45)">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 1v2M8 5h8M7 9h10M12 20v-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </div>
+          <div>
+            <div class="label">Monthly Revenue</div>
+            <div class="value">$284K</div>
+          </div>
+        </div>
+        <div class="delta" style="color:#ff7a45">+15%</div>
+      </div>
+    </section>
+
+    <section class="layout">
+      <div>
+        <div class="card">
+          <h3 style="margin:0 0 8px">System Modules</h3>
+          <div class="muted" style="margin-bottom:12px">Access all healthcare management features</div>
+
+          <div class="modules-grid">
+            <div class="module" role="button" tabindex="0" data-action="patients-list" aria-pressed="false">
+              <div class="m-icon" style="background:linear-gradient(135deg,#4ab3ff,#2b8cff)">🧾</div>
+              <div>
+                <h4>Patient Management</h4>
+                <p>Manage patient records, medical history, and treatment plans.</p>
+                <div class="badge" style="margin-top:10px">2,847 PATIENTS</div>
+              </div>
+            </div>
+
+            <div class="module" role="button" tabindex="0" data-action="staff" aria-pressed="false">
+              <div class="m-icon" style="background:linear-gradient(135deg,#60d394,#00c48c)">⚕️</div>
+              <div>
+                <h4>Medical Staff</h4>
+                <p>Doctor schedules, specialist assignments, and staff management.</p>
+                <div class="badge">89 STAFF</div>
+              </div>
+            </div>
+
+            <div class="module" role="button" tabindex="0" data-action="appointments" aria-pressed="false">
+              <div class="m-icon" style="background:linear-gradient(135deg,#ffb36b,#ff7a45)">📅</div>
+              <div>
+                <h4>Appointments</h4>
+                <p>Schedule, reschedule, and manage patient appointments.</p>
+                <div class="badge" style="background:#fff7f1;color:var(--danger)">156 TODAY</div>
+              </div>
+            </div>
+
+            <div class="module" role="button" tabindex="0" data-action="billing" aria-pressed="false">
+              <div class="m-icon" style="background:linear-gradient(135deg,#d3c7ff,#7b61ff)">💳</div>
+              <div>
+                <h4>Billing & Insurance</h4>
+                <p>Process payments, manage claims, and generate invoices.</p>
+                <div class="badge" style="background:#f6f5ff;color:#5a3fe6">$284K REVENUE</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <h3 style="margin:0 0 12px">Recent Activity</h3>
+          <div class="recent-list">
+            <div class="activity">
+              <div class="left">
+                <div class="avatar-sm">AP</div>
+                <div class="meta">
+                  <strong>Appointment booked — John Doe</strong>
+                  <div class="muted">Cardiology · 2:00 PM · Today</div>
+                </div>
+              </div>
+              <div class="muted">5m ago</div>
+            </div>
+
+            <div class="activity">
+              <div class="left">
+                <div class="avatar-sm">LR</div>
+                <div class="meta">
+                  <strong>Lab results uploaded — Jane R.</strong>
+                  <div class="muted">Blood Panel · 1hr ago</div>
+                </div>
+              </div>
+              <div class="muted">1h</div>
+            </div>
+
+            <div class="activity">
+              <div class="left">
+                <div class="avatar-sm">NV</div>
+                <div class="meta">
+                  <strong>New patient registered — Nivos Silva</strong>
+                  <div class="muted">Patient ID: #004512</div>
+                </div>
+              </div>
+              <div class="muted">3h</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar -->
+      <aside>
+        <div class="card">
+          <h4 style="margin:0 0 12px">Quick Actions</h4>
+          <div class="quick-actions">
+            <a class="action-btn" href="#new-patient" data-action="#new-patient" role="button"> 
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="#214b6b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              New Patient
+            </a>
+
+            <a class="action-btn green" href="#schedule" data-action="#schedule" role="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M8 7V3M16 7V3M3 11h18M5 21h14" stroke="#066a49" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Schedule Appointment
+            </a>
+
+            <a class="action-btn" href="#invoice" data-action="#invoice" role="button" style="border-color:rgba(255,122,69,0.08);color:#a64c28">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M9 17h6M7 21h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z" stroke="#a64c28" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              Generate Invoice
+            </a>
+
+            <a class="action-btn purple" href="#reports" data-action="#reports" role="button">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M3 3v18h18" stroke="#5a3fe6" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              View Reports
+            </a>
+          </div>
+
+          <h4 style="margin:18px 0 8px">System Status</h4>
+          <div class="status-list">
+            <div class="status-item">
+              <div style="display:flex;gap:10px;align-items:center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#067a4a" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div>
+                  <div style="font-weight:700">Security & Compliance</div>
+                  <div class="muted">Last audit: 12 days ago</div>
+                </div>
+              </div>
+              <div class="pill green">ACTIVE</div>
+            </div>
+
+            <div class="status-item">
+              <div style="display:flex;gap:10px;align-items:center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3v9" stroke="#b07800" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M19 21H5" stroke="#b07800" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div>
+                  <div style="font-weight:700">Uptime</div>
+                  <div class="muted">Service availability</div>
+                </div>
+              </div>
+              <div class="pill yellow">99.9%</div>
+            </div>
+
+            <div class="status-item">
+              <div style="display:flex;gap:10px;align-items:center">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M3 7h18M6 11h12M10 15h4" stroke="#6a46ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <div>
+                  <div style="font-weight:700">Medical Records</div>
+                  <div class="muted">Syncing with cloud</div>
+                </div>
+              </div>
+              <div class="pill purple">SYNCED</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <footer class="small">© 2025 MediLink Health Diagnostics (Pvt) Ltd · Colombo, Sri Lanka</footer>
+  </main>
+
+  <script>
+    // Generic handler to make UI elements interactive and show press/active states.
+    function handleAction(action) {
+      const map = {
+        '#new-patient': 'Opening New Patient form…',
+        '#schedule': 'Opening Schedule Appointment…',
+        '#invoice': 'Generating invoice…',
+        '#reports': 'Opening reports…',
+        'logout': 'Logging out…',
+        'appointments': 'Opening Appointments view…',
+        'patients-list': 'Opening Patient management…',
+        'staff': 'Opening Medical staff…',
+        'billing': 'Opening Billing & Insurance…',
+        '#home': 'Back to dashboard',
+        '#patients': 'Opening Patients',
+        '#doctors': 'Opening Doctors'
+      };
+      const msg = map[action] || `Action: ${action}`;
+      showToast(msg);
+
+      if (typeof action === 'string' && action.startsWith('#')) {
+        const el = document.querySelector(action);
+        if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    }
+
+    // lightweight toast
+    function showToast(text) {
+      const t = document.createElement('div');
+      t.textContent = text;
+      Object.assign(t.style, {
+        position: 'fixed',
+        right: '20px',
+        bottom: '20px',
+        background: 'rgba(20,40,60,0.95)',
+        color: 'white',
+        padding: '10px 14px',
+        borderRadius: '8px',
+        boxShadow: '0 8px 24px rgba(16,32,58,0.25)',
+        zIndex: 9999,
+        fontWeight: 700,
+        fontSize: '13px',
+        opacity: '0',
+        transition: 'opacity .18s ease, transform .18s ease',
+        transform: 'translateY(6px)'
+      });
+      document.body.appendChild(t);
+      requestAnimationFrame(() => { t.style.opacity = '1'; t.style.transform = 'translateY(0)'; });
+      setTimeout(() => { t.style.opacity = '0'; t.style.transform = 'translateY(6px)'; }, 1600);
+      setTimeout(() => t.remove(), 1800);
+    }
+
+    // Visual feedback: transient press + optional persistent active
+    function flashPress(el, {duration = 260, persist = false} = {}) {
+      if (!el) return;
+      el.classList.remove('is-pressed');
+      if (persist) {
+        if (el.matches('nav.topnav a')) {
+          el.closest('nav.topnav').querySelectorAll('a').forEach(a => a.classList.remove('active'));
+          el.classList.add('active');
+        } else if (el.matches('.stat')) {
+          // exclusive for stats: toggle active single
+          el.closest('.stats-row')?.querySelectorAll('.stat').forEach(s => s.classList.remove('active'));
+          el.classList.add('active');
+        } else {
+          el.classList.toggle('active');
+        }
+      }
+      requestAnimationFrame(() => el.classList.add('is-pressed'));
+      clearTimeout(el._pressTimeout);
+      el._pressTimeout = setTimeout(() => {
+        el.classList.remove('is-pressed');
+      }, duration);
+      // update aria-pressed for toggleable elements
+      if (el.hasAttribute('aria-pressed')) {
+        const pressed = el.getAttribute('aria-pressed') === 'true';
+        el.setAttribute('aria-pressed', String(!pressed));
+      }
+    }
+
+    document.addEventListener('click', function(e) {
+      const el = e.target.closest('[data-action], .cta, .btn-outline, nav.topnav a, .module, .action-btn, .stat');
+      if (!el) return;
+      e.preventDefault();
+
+      const persistFor = el.matches('nav.topnav a') || el.matches('.stat');
+      flashPress(el, {duration: 260, persist: persistFor});
+
+      const action = el.dataset.action || el.getAttribute('href') || el.textContent.trim();
+      handleAction(action);
+    });
+
+    // keyboard accessible activation with visual feedback
+    document.addEventListener('keydown', function(e) {
+      const active = document.activeElement;
+      if (!active) return;
+      const clickable = active.matches('[data-action], .module, .action-btn, .btn-outline, .cta, nav.topnav a, .stat');
+      if ((e.key === 'Enter' || e.key === ' ') && clickable) {
+        e.preventDefault();
+        const persistFor = active.matches('nav.topnav a') || active.matches('.stat');
+        flashPress(active, {duration: 260, persist: persistFor});
+        active.click();
+      }
+    });
+
+    // ensure anchors with href fragment scroll properly
+    document.querySelectorAll('a[href^="#"]').forEach(a=>{
+      a.addEventListener('click', (ev)=>{
+        const href = a.getAttribute('href');
+        if (href && href.startsWith('#')) {
+          const target = document.querySelector(href);
+          if (target) setTimeout(()=> target.scrollIntoView({behavior:'smooth', block:'start'}), 220);
+        }
+      });
+    });
+
+    // attach CTA handlers if present
+    document.querySelectorAll('.cta').forEach(node=>{
+      node.addEventListener('click', function(e){
+        e.preventDefault();
+        flashPress(node, {duration:260, persist:false});
+        handleAction(node.dataset.action || '#appointments');
+      });
+    });
+  </script>
+</body>
+</html>
